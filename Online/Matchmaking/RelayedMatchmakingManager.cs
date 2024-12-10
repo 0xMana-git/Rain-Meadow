@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using static RainMeadow.NetIO;
+using static RainMeadow.PeerBase;
 
 namespace RainMeadow
 {
@@ -21,11 +22,11 @@ namespace RainMeadow
 
         public class RelayedPlayerId : MeadowPlayerId
         {
-            public int id;
+            public PeerID id;
             public bool isHost;
 
             public RelayedPlayerId() { }
-            public RelayedPlayerId(int id,bool isHost) : base($"local:{id}")
+            public RelayedPlayerId(PeerID id, bool isHost) : base($"local:{id}")
             {
                 this.id = id;
                 this.isHost = isHost;
@@ -49,7 +50,7 @@ namespace RainMeadow
 
             public override int GetHashCode()
             {
-                return id;
+                return (int)id;
             }
         }
 
@@ -60,18 +61,20 @@ namespace RainMeadow
 
         public string? lobbyPassword;
         public LobbyInfo lobbyInfo;
+        public static PeerBase peerInstance = RelayedPeer.instance;
 
-        private int me = -1;
-        private IPEndPoint currentLobbyHost = null;
+        private PeerID me = (PeerID)(-1);
+        private PeerID currentLobbyHostID = 0;
 
         public RelayedMatchmakingManager()
         {
-            OnlineManager.mePlayer = new OnlinePlayer(new RelayedPlayerId(me, null, false)) { isMe = true };
+            OnlineManager.mePlayer = new OnlinePlayer(new RelayedPlayerId(me, false)) { isMe = true };
         }
 
         public override event LobbyListReceived_t OnLobbyListReceived;
         public override event PlayerListReceived_t OnPlayerListReceived;
         public override event LobbyJoined_t OnLobbyJoined;
+        
 
         public override void RequestLobbyList()
         {
@@ -85,14 +88,14 @@ namespace RainMeadow
         public void sessionSetup(bool isHost)
         {
             RainMeadow.DebugMe();
-            UdpPeer.Startup();
-            me = UdpPeer.port;
-            isHost = me == UdpPeer.STARTING_PORT;
+
+            me = (PeerID)(new Random().Next(int.MinValue, int.MaxValue));
+            //TODO: port properly
+            isHost = true;
             var thisPlayer = (RelayedPlayerId)OnlineManager.mePlayer.id;
             thisPlayer.name = $"local:{me}";
             thisPlayer.isHost = isHost;
             thisPlayer.id = me;
-            thisPlayer.endPoint = UdpPeer.ownEndPoint;
         }
 
         public void sessionShutdown()
@@ -134,13 +137,12 @@ namespace RainMeadow
             var memory = new MemoryStream(16);
             var writer = new BinaryWriter(memory);
             Packet.Encode(new RequestJoinPacket(), writer, null);
-            UdpPeer.Send(lobby.ipEndpoint, memory.GetBuffer(), (int)memory.Position, UdpPeer.PacketType.Reliable);
+            peerInstance.Send(lobby.peerId, memory.GetBuffer(), (int)memory.Position, PeerBase.PacketType.Reliable);
         }
         public void LobbyJoined()
         {
             OnlineManager.lobby = new Lobby(new OnlineGameMode.OnlineGameModeType(localGameMode), GetLobbyOwner(), lobbyPassword);
             var lobbyOwner = (RelayedPlayerId)OnlineManager.lobby.owner.id;
-            currentLobbyHost = lobbyOwner.endPoint;
         }
         public override void JoinLobby(bool success)
         {
@@ -166,7 +168,7 @@ namespace RainMeadow
                     var memory = new MemoryStream(16);
                     var writer = new BinaryWriter(memory);
                     Packet.Encode(new RequestLeavePacket(), writer, null);
-                    UdpPeer.Send(currentLobbyHost, memory.GetBuffer(), (int)memory.Position, UdpPeer.PacketType.Reliable);
+                    RelayedPeer.instance.Send(currentLobbyHostID, memory.GetBuffer(), (int)memory.Position, PeerBase.PacketType.Reliable);
                 }
             }
         }
@@ -177,9 +179,9 @@ namespace RainMeadow
             return OnlineManager.players.First(p => (p.id as RelayedPlayerId).isHost);
         }
 
-        public OnlinePlayer GetPlayerLocal(int port)
+        public OnlinePlayer GetPlayerLocal(PeerID peerId)
         {
-            return OnlineManager.players.FirstOrDefault(p => (p.id as RelayedPlayerId).id == port);
+            return OnlineManager.players.FirstOrDefault(p => (p.id as RelayedPlayerId).id == peerId);
         }
 
         public void LocalPlayerJoined(OnlinePlayer joiningPlayer)

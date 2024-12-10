@@ -59,15 +59,26 @@ namespace RainMeadow
                     _ => UdpPeer.PacketType.Unreliable,
                 });
         }
+        //TODO: make one for peerbase
         public static void SendRelayed(OnlinePlayer player, Packet packet, SendType sendType){
 
-        }
+            var localPlayerId = player.id as RelayedMatchmakingManager.RelayedPlayerId;
+            MemoryStream memory = new MemoryStream(128);
+            BinaryWriter writer = new BinaryWriter(memory);
 
-        // This should completely abstract away transmission layer details(Except transmission errors i guess)
-        // One can only hope...
-        public static void SendPacket(OnlinePlayer player, Packet packet, SendType sendType)
-        {
+            Packet.Encode(packet, writer, player);
 
+            byte[] bytes = memory.GetBuffer();
+
+            
+
+            RelayedPeer.instance.Send(localPlayerId.id, bytes, (int)memory.Position,
+                sendType switch
+                {
+                    SendType.Reliable => PeerBase.PacketType.Reliable,
+                    SendType.Unreliable => PeerBase.PacketType.Unreliable,
+                    _ => PeerBase.PacketType.Unreliable,
+                });
         }
 
         public static void Update()
@@ -96,6 +107,36 @@ namespace RainMeadow
                     {
                         RainMeadow.Debug("Player not found! Instantiating new at: " + remoteEndpoint.Port);
                         player = new OnlinePlayer(new LocalMatchmakingManager.LocalPlayerId(remoteEndpoint.Port, remoteEndpoint, remoteEndpoint.Port == UdpPeer.STARTING_PORT));
+                    }
+
+                    Packet.Decode(netReader, player);
+                }
+                catch (Exception e)
+                {
+                    RainMeadow.Error(e);
+                    OnlineManager.serializer.EndRead();
+                }
+            }
+        }
+        public static void ReceiveDataRelay()
+        {
+            RelayedPeer.instance.Update();
+            UdpPeer.Update();
+
+            while (RelayedPeer.instance.IsPacketAvailable())
+            {
+                try
+                {
+                    //RainMeadow.Debug("To read: " + UdpPeer.debugClient.Available);
+                    if (!RelayedPeer.instance.Read(out BinaryReader netReader, out PeerBase.PeerID peerId))
+                        continue;
+                    if (netReader.BaseStream.Position == ((MemoryStream)netReader.BaseStream).Length) continue; // nothing to read somehow?
+                    var player = (MatchmakingManager.instance as RelayedMatchmakingManager).GetPlayerLocal(peerId);
+                    if (player == null)
+                    {
+                        RainMeadow.Debug("Player not found! Instantiating new at: " + peerId);
+                        bool ISHOST = true;
+                        player = new OnlinePlayer(new RelayedMatchmakingManager.RelayedPlayerId(peerId, ISHOST));
                     }
 
                     Packet.Decode(netReader, player);
