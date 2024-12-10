@@ -59,6 +59,16 @@ namespace RainMeadow
                     _ => UdpPeer.PacketType.Unreliable,
                 });
         }
+        public static void SendRelayed(OnlinePlayer player, Packet packet, SendType sendType){
+
+        }
+
+        // This should completely abstract away transmission layer details(Except transmission errors i guess)
+        // One can only hope...
+        public static void SendPacket(OnlinePlayer player, Packet packet, SendType sendType)
+        {
+
+        }
 
         public static void Update()
         {
