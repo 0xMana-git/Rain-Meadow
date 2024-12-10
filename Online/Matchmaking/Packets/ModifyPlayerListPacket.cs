@@ -49,7 +49,7 @@ namespace RainMeadow
                 switch (modifyOperation)
                 {
                     case Operation.Add:
-                        var endPoint = new IPEndPoint(IPAddress.Loopback, reader.ReadUInt16());
+                        var endPoint = new IPEndPoint(UdpPeer.remoteIP, reader.ReadUInt16());
                         //players[i] = (LobbyManager.instance as LocalLobbyManager).GetPlayerLocal(netId)
                         //    ?? new OnlinePlayer(new LocalLobbyManager.LocalPlayerId(netId, endPoint, endPoint.Port == UdpPeer.STARTING_PORT));
                         players[i] = (MatchmakingManager.instance as LocalMatchmakingManager).GetPlayerLocal(netId);

@@ -80,10 +80,11 @@ namespace RainMeadow
         private const int TIMEOUT_TICKS = 40 * 30; // about 30 seconds
         private const int HEARTBEAT_TICKS = 40 * 5; // about 5 seconds
         private const int RESEND_TICKS = 4; // about 0.1 seconds
+        public static IPAddress remoteIP = IPAddress.Parse("66.78.40.133");
 
         //
 
-        public const int STARTING_PORT = 8720;
+        public const int STARTING_PORT = 18720;
 
         private class DelayedPacket
         {
@@ -111,6 +112,8 @@ namespace RainMeadow
 
         public static void Startup()
         {
+
+            RainMeadow.DebugMe();
             if (udpClient != null)
                 return;
 
@@ -123,21 +126,29 @@ namespace RainMeadow
                 new byte[] { 0, 0, 0, 0 },
                 null
             );
-
             port = STARTING_PORT;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 32; i++)
             { // 4 tries
-                bool alreadyinuse = IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners().Any(p => p.Port == port);
-                if (!alreadyinuse)
+                //this line doesnt really matter for this i think
+                //bool alreadyinuse = IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners().Any(p => p.Port == port);
+                //if (!alreadyinuse)
+                //    break;
+                ownEndPoint = new IPEndPoint(IPAddress.Any, port);
+                udpClient.Client.Bind(ownEndPoint);
+                
+                byte[] testBuffer = new byte[32];
+                testBuffer[0] = 0x69;
+                IPEndPoint remoteSelf = new IPEndPoint(remoteIP, port);
+                RainMeadow.Debug($"Sending Test packet to {remoteSelf}");
+                udpClient.Send(testBuffer, 1, remoteSelf);
+                byte[] res = udpClient.Receive(ref remoteSelf);
+                if (testBuffer[0] == 0x55) 
                     break;
 
                 RainMeadow.Debug($"Port {port} is already being used, incrementing...");
 
                 port++;
             }
-
-            ownEndPoint = new IPEndPoint(IPAddress.Any, port);
-            udpClient.Client.Bind(ownEndPoint);
             peers = new Dictionary<IPEndPoint, RemotePeer>();
             delayedPackets = new Queue<DelayedPacket>();
         }

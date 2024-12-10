@@ -80,7 +80,7 @@ namespace RainMeadow
             RainMeadow.DebugMe();
             //OnLobbyListReceived?.Invoke(true, new LobbyInfo[0] { });
             // Create the proper list
-            var fakeEndpoint = new IPEndPoint(IPAddress.Loopback, UdpPeer.STARTING_PORT);
+            var fakeEndpoint = new IPEndPoint(UdpPeer.remoteIP, UdpPeer.STARTING_PORT);
             OnLobbyListReceived?.Invoke(true, new LobbyInfo[2] { new LobbyInfo(fakeEndpoint, "local", localGameMode, 1, false, MAX_LOBBY), new LobbyInfo(fakeEndpoint, "local:HasPassword", localGameMode, 1, true, MAX_LOBBY) });
         }
 
