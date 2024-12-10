@@ -24,6 +24,7 @@ namespace RainMeadow
         {
             public PeerID id;
             public bool isHost;
+            public static PeerID hostID = 42069;
 
             public RelayedPlayerId() { }
             public RelayedPlayerId(PeerID id, bool isHost) : base($"local:{id}")

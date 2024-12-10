@@ -135,8 +135,7 @@ namespace RainMeadow
                     if (player == null)
                     {
                         RainMeadow.Debug("Player not found! Instantiating new at: " + peerId);
-                        bool ISHOST = true;
-                        player = new OnlinePlayer(new RelayedMatchmakingManager.RelayedPlayerId(peerId, ISHOST));
+                        player = new OnlinePlayer(new RelayedMatchmakingManager.RelayedPlayerId(peerId, peerId == RelayedMatchmakingManager.RelayedPlayerId.hostID));
                     }
 
                     Packet.Decode(netReader, player);
