@@ -11,11 +11,16 @@ namespace RainMeadow
 {
     public static class UdpPeer
     {
-        public static float simulatedLoss = 0.05f;
-        public static float simulatedChainLoss = 0.4f;
-        public static float simulatedLatency = 80; //80   turns on delay;
-        public static float simulatedJitter = 100;
-        public static float simulatedJitterPower = 2;
+        //public static float simulatedLoss = 0.05f;
+        //public static float simulatedChainLoss = 0.4f;
+        //public static float simulatedLatency = 80; //80   turns on delay;
+        //public static float simulatedJitter = 100;
+        //public static float simulatedJitterPower = 2;
+        public static float simulatedLoss = 0.0f;
+        public static float simulatedChainLoss = 0.0f;
+        public static float simulatedLatency = 0; //80   turns on delay;
+        public static float simulatedJitter = 0;
+        public static float simulatedJitterPower = 0;
 
         public static System.Random random = new System.Random();
 
@@ -103,6 +108,7 @@ namespace RainMeadow
 
             public void Send()
             {
+                RainMeadow.Debug2("Sending to : " + destination);
                 udpClient.Send(packet, packet.Length, destination);
                 //RainMeadow.Debug("Sent: " + packet.Length);
             }
@@ -118,37 +124,46 @@ namespace RainMeadow
                 return;
 
             // Create udp client for local connection
-            udpClient = new UdpClient();
-
-            // With this set, it will be truely connectionless
-            udpClient.Client.IOControl(
-                (IOControlCode)(-1744830452), // SIO_UDP_CONNRESET
-                new byte[] { 0, 0, 0, 0 },
-                null
-            );
-            port = STARTING_PORT;
-            for (int i = 0; i < 32; i++)
+            
+            
+            for (port = STARTING_PORT; port < STARTING_PORT + 32; port++)
             { // 4 tries
-                //this line doesnt really matter for this i think
-                //bool alreadyinuse = IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners().Any(p => p.Port == port);
-                //if (!alreadyinuse)
-                //    break;
-                ownEndPoint = new IPEndPoint(IPAddress.Any, port);
-                udpClient.Client.Bind(ownEndPoint);
-                
-                byte[] testBuffer = new byte[32];
-                testBuffer[0] = 0x69;
+              //this line doesnt really matter for this i think
+                bool alreadyinuse = IPGlobalProperties.GetIPGlobalProperties().GetActiveUdpListeners().Any(p => p.Port == port);
+                if (alreadyinuse){
+                    RainMeadow.Debug2($"Port {port} is already being used, incrementing...");
+                    continue;
+                }
+                  
+                    
+                ownEndPoint = new IPEndPoint(remoteIP, port);
+                udpClient = new UdpClient(port);
+
+                    // With this set, it will be truely connectionless
+                udpClient.Client.IOControl(
+                        (IOControlCode)(-1744830452), // SIO_UDP_CONNRESET
+                        new byte[] { 0, 0, 0, 0 },
+                        null
+                    );
+                //udpClient.Client.Bind(ownEndPoint);
+
+                //signature(lol)
+                byte[] testBuffer = new byte[8] { 0x4d, 0x61, 0x6e, 0x61, 0x13, 0x37, 0x42, 0x69};
                 IPEndPoint remoteSelf = new IPEndPoint(remoteIP, port);
-                RainMeadow.Debug($"Sending Test packet to {remoteSelf}");
-                udpClient.Send(testBuffer, 1, remoteSelf);
+                RainMeadow.Debug2($"Sending Test packet from {udpClient.Client.LocalEndPoint}");
+                RainMeadow.Debug2($"Sending Test packet to {remoteSelf}");
+                udpClient.Send(testBuffer, 8, remoteSelf);
+                RainMeadow.Debug2($"Recieving response packet from {remoteSelf}");
                 byte[] res = udpClient.Receive(ref remoteSelf);
-                if (testBuffer[0] == 0x55) 
+                RainMeadow.Debug2($"Recieved response packet from {remoteSelf}: {BitConverter.ToString(res)}");
+                if (res[0] == 0x55) 
                     break;
 
-                RainMeadow.Debug($"Port {port} is already being used, incrementing...");
+                RainMeadow.Debug2($"Port {port} is already being used, incrementing...");
 
-                port++;
             }
+            
+   
             peers = new Dictionary<IPEndPoint, RemotePeer>();
             delayedPackets = new Queue<DelayedPacket>();
         }
@@ -233,7 +248,7 @@ namespace RainMeadow
 
         public static bool Read(out BinaryReader netReader, out IPEndPoint remoteEndpoint)
         {
-            remoteEndpoint = new IPEndPoint(IPAddress.Any, 0);
+            remoteEndpoint = new IPEndPoint(remoteIP, 0);
             MemoryStream netStream = new MemoryStream(udpClient.Receive(ref remoteEndpoint));
             netReader = new BinaryReader(netStream);
 
