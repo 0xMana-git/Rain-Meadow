@@ -11,11 +11,11 @@ namespace RainMeadow
 {
     public static class UdpPeer
     {
-        public static float simulatedLoss = 0.05f;
-        public static float simulatedChainLoss = 0.4f;
-        public static float simulatedLatency = 80; //80   turns on delay;
-        public static float simulatedJitter = 100;
-        public static float simulatedJitterPower = 2;
+        public static float simulatedLoss = 0.0f;
+        public static float simulatedChainLoss = 0.0f;
+        public static float simulatedLatency = 0; //80   turns on delay;
+        public static float simulatedJitter = 0;
+        public static float simulatedJitterPower = 0;
 
         public static System.Random random = new System.Random();
 
